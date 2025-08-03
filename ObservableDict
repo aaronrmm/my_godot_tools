@@ -1,0 +1,70 @@
+extends ListenableSubstate
+class_name ListenableDict
+
+@export var data: Dictionary = {}
+
+func _init(initial := {}, _path =null):
+	if _path == null:
+		_path = []
+	path = _path
+	for k in initial.keys():
+		self._set(k, initial[k])
+	self.changed.connect(func(_change): print("change at ", path))
+
+func _set(key, value):
+	var full_path = path + [key]
+	var old_value = data.get(key)
+	value = _wrap_value(value, full_path)
+	_disconnect_child(old_value)
+	_connect_child(value)
+		
+	data[key] = value
+	
+	var change_event = ListenableChange.new()
+	change_event.new_property_value = value
+	change_event.prev_property_value = old_value
+	change_event.property_path = full_path
+	changed.emit(change_event)
+	return true
+
+func _get(key):
+	if key in data:
+		return data.get(key)
+	return null
+
+func _wrap_value(value, full_path):
+	if typeof(value) == TYPE_DICTIONARY:
+		return ListenableDict.new(value, full_path)
+	elif typeof(value) == TYPE_ARRAY:
+		return ListenableArray.new(value, full_path)
+	else:
+		return value
+		
+func size()->int:
+	return data.size()
+	
+func erase(key):
+	return data.erase(key)
+	
+func values()->Array:
+	return data.values()
+	
+func keys()->Array:
+	return data.keys()
+
+func _getv(_name):
+	return _get(_name)
+
+func _setv(_name, value):
+	_set(_name, value)
+	
+func deep_copy():
+	var initial = data.duplicate(true)
+	for key in initial:
+		if is_instance_of(initial[key], ListenableDict):
+			initial[key] = initial[key].deep_copy()
+		elif is_instance_of(initial[key], ListenableArray):
+			initial[key] = initial[key].deep_copy()
+		
+	var new = ListenableDict.new(initial, self.path)
+	return new
