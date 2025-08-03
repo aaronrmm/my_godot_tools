@@ -1,0 +1,90 @@
+extends ListenableSubstate
+class_name ListenableArray
+
+@export var data: Array = []
+
+func _init(initial := [], _path := []):
+	path = _path
+	for i in initial.size():
+		self._set(i, initial[i])  # Goes through set()
+
+func _set(index, value):
+	var full_path = path + [index]
+	var old_value = _get(index)
+	value = _wrap_value(value, full_path)
+	_disconnect_child(old_value)
+	_connect_child(value)
+	if index >= data.size():
+		data.resize(index + 1)
+	data[index] = value
+	
+	var change_event = ListenableChange.new()
+	change_event.new_property_value = value
+	change_event.prev_property_value = old_value
+	change_event.property_path = full_path
+	changed.emit(change_event)
+	return true
+	
+	
+func _append(value):
+	self._set(
+		len(data),
+		value
+	)
+	
+func append(value):
+	_append(value)
+	
+func size()->int:
+	return len(data)
+
+func _get(index):
+	if typeof(index) == TYPE_INT:
+		if index < len(data):
+			return data[index]
+		else:
+			return null
+	return null
+	
+func get_at(index:int):
+	return data[index]
+	
+
+func _wrap_value(value, full_path):
+	if typeof(value) == TYPE_DICTIONARY:
+		return ListenableDict.new(value, full_path)
+	elif typeof(value) == TYPE_ARRAY:
+		return ListenableArray.new(value, full_path)
+	else:
+		return value
+
+	
+func deep_copy():
+	var initial = data.duplicate(true)
+	for key in range(initial.size()):
+		if is_instance_of(initial[key], ListenableDict):
+			initial[key] = initial[key].deep_copy()
+		elif is_instance_of(initial[key], ListenableArray):
+			initial[key] = initial[key].deep_copy()
+		
+	var new = ListenableArray.new(initial, self.path)
+	return new
+
+
+#region make iterable
+var _current = 0
+
+func should_continue():
+	return (_current < len(data))
+
+func _iter_init(arg):
+	_current = 0
+	return should_continue()
+
+func _iter_next(arg):
+	_current += 1
+	return should_continue()
+
+func _iter_get(arg):
+	return self._get(_current)
+#endregion make iterable
