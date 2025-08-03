@@ -1,0 +1,27 @@
+class_name ListenableSubstate
+extends Node
+
+signal changed(change_event: ListenableChange)
+@export var path: Array = []
+
+
+func _disconnect_child(child):
+	if (
+		is_instance_of(child, ListenableDict)
+		or is_instance_of(child, ListenableArray)
+	):
+		child.changed.disconnect(_on_child_changed)
+	else:
+		pass
+
+func _connect_child(child):
+	if (
+		is_instance_of(child, ListenableDict)
+		or is_instance_of(child, ListenableArray)
+	):
+		child.changed.connect(_on_child_changed)
+	else:
+		pass
+		
+func _on_child_changed(change_event):
+	changed.emit(change_event)
