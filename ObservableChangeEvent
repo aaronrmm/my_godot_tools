@@ -1,0 +1,42 @@
+class_name ListenableChange extends Node
+
+var change_id
+var property_path: Array
+var prev_property_value
+var new_property_value
+
+func _to_string() -> String:
+	return (
+		"change: "
+		+str(change_id)
+		+", "
+		+str(property_path)
+		+", "
+		+str(prev_property_value)
+		+" to "
+		+str(new_property_value)
+	)
+
+static var _next_id = 0
+func _init(_change_id=null):
+	if _change_id != null:
+		self.change_id = _change_id
+	else:
+		self.change_id = _next_id
+		_next_id+=1
+	
+func propogate(prefix: Array[String])->ListenableChange:
+	var change = ListenableChange.new(self.change_id)
+	change.new_property_value = self.new_property_value
+	change.prev_property_value = self.prev_property_value
+	change.property_path =prefix+self.property_path
+	return change
+
+#region constructors
+static func from_property_new_and_old(property: String, new, old):
+	var change = ListenableChange.new()
+	change.property_path = [property]
+	change.prev_property_value =old
+	change.new_property_value = new
+	return change
+#endregion constructors
